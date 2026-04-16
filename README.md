@@ -1,2 +1,2 @@
-# gest-o-financeira-loja-de-pneu
+# gestao-financeira-loja-de-pneu
 Sistema de Gestão Financeira
