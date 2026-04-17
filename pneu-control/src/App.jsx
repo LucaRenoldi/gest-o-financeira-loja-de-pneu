@@ -296,6 +296,8 @@ function buildDailyChart(sales, expenses) {
 function Dashboard({ sales, expenses, purchases }) {
   const [period, setPeriod] = useState("mensal");
 
+  const COLORS = ['#3b82f6', '#22c55e', '#eab308', '#a855f7', '#f97316', '#ef4444', '#06b6d4'];
+
   // Filtro inteligente que observa o botão clicado
   const filteredData = useMemo(() => {
     const hoje = new Date();
@@ -361,26 +363,21 @@ function Dashboard({ sales, expenses, purchases }) {
   const chartData = useMemo(() => buildDailyChart(filteredData.sales, filteredData.expenses), [filteredData]);
   const regionData = useMemo(() => {
     const counts = {};
-
     filteredData.sales.forEach(sale => {
       const reg = sale.region || "Outros";
       const totalPneus = sale.items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
       const faturamento = sale.total || 0;
 
-      if (!counts[reg]) {
-        counts[reg] = { pneus: 0, valor: 0 };
-      }
+      if (!counts[reg]) counts[reg] = { pneus: 0, valor: 0 };
       counts[reg].pneus += totalPneus;
       counts[reg].valor += faturamento;
     });
 
-    return Object.keys(counts)
-      .map(reg => ({
-        name: reg,
-        pneus: counts[reg].pneus,
-        valor: counts[reg].valor
-      }))
-      .sort((a, b) => b.valor - a.valor); // Ordena pelo faturamento
+    return Object.keys(counts).map(reg => ({
+      name: reg,
+      pneus: counts[reg].pneus,
+      valor: counts[reg].valor
+    })).sort((a, b) => b.valor - a.valor);
   }, [filteredData.sales]);
 
   const pieData = useMemo(() => {
@@ -454,33 +451,47 @@ function Dashboard({ sales, expenses, purchases }) {
         <div style={{ background: "#14151c", border: "1px solid #2d2d38", borderRadius: 12, padding: 24 }}>
           <h3 style={{ fontFamily: "Bebas Neue", fontSize: 18, color: "#f1f5f9", letterSpacing: "0.06em", marginBottom: 16 }}>Faturamento por Região</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={regionData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              {/* Eixo X com letra branca */}
+            <BarChart data={regionData} margin={{ top: 30, right: 30, left: 40, bottom: 5 }}>
               <XAxis
                 dataKey="name"
-                stroke="#f1f5f9" // Cor da linha e das letras
-                fontSize={12}
+                stroke="#f1f5f9"
+                fontSize={11}
                 tickLine={false}
                 axisLine={false}
-                tick={{ fill: '#f1f5f9' }} // Força a cor do texto para branco
+                tick={{ fill: '#f1f5f9' }}
               />
 
-              {/* Eixo Y invisível para dar foco às barras */}
-              <YAxis hide />
+              <YAxis
+                stroke="#64748b"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `R$ ${value}`}
+                tick={{ fill: '#64748b' }}
+              />
 
               <Tooltip
-                cursor={{ fill: 'transparent' }}
-                contentStyle={{ background: "#14151c", border: "1px solid #2d2d38", borderRadius: 8 }}
-                itemStyle={{ color: "#fff" }}
+                cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                labelFormatter={() => ""}
+                contentStyle={{ background: "#f1f2f6", border: "1px solid #2d2d38", borderRadius: 8 }}
+                formatter={(value, name) => [
+                  name === "valor" ? fmt(value) : `${value} un`,
+                  name === "valor" ? "Faturamento" : "Qtd. Pneus"
+                ]}
               />
 
-              <Bar dataKey="pneus" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={50}>
-                {/* LabelList para mostrar o número de pneus EM CIMA ou DENTRO da barra */}
+              {/* Removemos o 'fill' fixo da Bar e usamos Cell abaixo */}
+              <Bar dataKey="valor" radius={[4, 4, 0, 0]} barSize={45}>
+                {/* Mapeia cada barra para uma cor da nossa lista */}
+                {regionData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+
                 <LabelList
                   dataKey="pneus"
                   position="top"
-                  offset={10}
-                  style={{ fill: "#ffffff", fontSize: 13, fontWeight: 600, fontFamily: "IBM Plex Mono" }}
+                  formatter={(v) => `${v} un`}
+                  style={{ fill: "#ffffff", fontSize: 11, fontWeight: 600, fontFamily: "IBM Plex Mono" }}
                 />
               </Bar>
             </BarChart>
@@ -790,7 +801,6 @@ function Estoque({ purchases, addPurchase, deleteItem }) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(emptyF);
   const [saving, setSaving] = useState(false);
-
   const addItem = () => setForm(f => ({ ...f, items: [...f.items, { size: TIRE_SIZES[7], qty: 4 }] }));
   const updItem = (i, k, v) => setForm(f => { const it = [...f.items]; it[i] = { ...it[i], [k]: k === "size" ? v : Number(v) }; return { ...f, items: it }; });
 
