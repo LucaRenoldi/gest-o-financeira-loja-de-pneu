@@ -710,6 +710,7 @@ function Financeiro({sales,expenses,purchases}){
     {label:"Compras/Estoque",value:totalComp,           color:B, items:purchases.map(p=>({date:p.date,time:"—",desc:`${p.brand} · ${p.orderNumber}`,cat:"Estoque",tag:"empresa",value:p.totalCost}))},
     {label:"Lucro Estimado", value:totalFat-totalDesp-totalComp, color:O, items:[]},
     {label:"A Receber",      value:totalRec,            color:Y, items:sales.filter(s=>!s.paid).map(s=>({date:s.date,time:s.time,desc:`Fiado — ${s.clientName}`,cat:"Vendas",tag:"fiado",value:s.total}))},
+    {label:"Divida Ativa",    value:totalRec,            color:R, items:sales.filter(s=>!s.paid).map(s=>({date:s.date,time:s.time,desc:`Débito — ${s.clientName}`,cat:"Vendas",tag:"atrasado",value:s.total}))},
   ];
 
   return(
