@@ -258,6 +258,21 @@ function useSupabase(){
     return true;
   };
 
+  const markSaleAsPaid = async (id) => {
+    const { error } = await supabase
+      .from("sales")
+      .update({ paid: true })
+      .eq("id", id);
+
+    if (error) {
+      showToast("Erro ao atualizar pagamento", "error");
+      return false;
+    }
+    
+    showToast("Pagamento recebido!");
+    fetchAll(); // Atualiza os dados na tela na hora
+    return true;
+  };
   /* Normaliza campos do banco → padrão do app */
   const normSales=useMemo(()=>sales.map(s=>({
     ...s,
@@ -276,7 +291,7 @@ function useSupabase(){
   return{
     sales:normSales,purchases:normPurchases,expenses,
     loading,error,toast,
-    fetchAll,addSale,markSalePaid,addPurchase,addExpense,deleteItem
+    fetchAll,addSale,markSalePaid,addPurchase,addExpense,deleteItem, markSaleAsPaid
   };
 }
 
@@ -453,7 +468,7 @@ function Dashboard({sales,expenses,purchases}){
 }
 
 /* ─────────────── Vendas ─────────────── */
-function Vendas({sales,addSale, deleteItem}){
+function Vendas({sales,addSale, deleteItem, markAsPaid, markSaleAsPaid }){
   const empty={clientName:"",clientPhone:"",region:REGIONS[0],items:[{size:TIRE_SIZES[7],qty:1,unitPrice:""}],paid:true,date:today(),time:nowT()};
   const [modal,setModal]=useState(false);
   const [form,setForm]=useState(empty);
@@ -520,6 +535,26 @@ function Vendas({sales,addSale, deleteItem}){
                   </span>
                 </td>
                 <td style={{ padding: "13px 16px" }}>
+                  {!s.paid && (
+                      <button 
+                        onClick={() => markSaleAsPaid(s.id)}
+                        title="Marcar como Pago"
+                        style={{
+                          background: "rgba(34, 197, 94, 0.1)",
+                          border: "none",
+                          borderRadius: "6px",
+                          padding: "6px",
+                          cursor: "pointer",
+                          color: "#22c55e",
+                          marginRight: "8px",
+                          transition: "0.2s"
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.background = "rgba(34, 197, 94, 0.2)"}
+                        onMouseOut={(e) => e.currentTarget.style.background = "rgba(34, 197, 94, 0.1)"}
+                      >
+                        <Check size={16} />
+                      </button>
+                  )}
                   <button 
                     onClick={() => deleteItem("sales", s.id, s.clientName)}
                     style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563" }}
@@ -935,7 +970,7 @@ export default function App(){
   const {
     sales,purchases,expenses,
     loading,error,toast,
-    fetchAll,addSale,markSalePaid,addPurchase,addExpense,deleteItem,
+    fetchAll,addSale,markSalePaid,addPurchase,addExpense,deleteItem,markSaleAsPaid
   }=useSupabase();
 
   const fiadoN=sales.filter(s=>!s.paid).length;
@@ -996,7 +1031,7 @@ export default function App(){
           ? <Spinner msg="Carregando dados do servidor..."/>
           : <ErrorBoundary>
               {page==="dashboard"  &&<Dashboard  sales={sales} expenses={expenses} purchases={purchases}/>}
-              {page==="vendas"     &&<Vendas     sales={sales} addSale={addSale} deleteItem={requestDelete}/>}
+              {page==="vendas"     &&<Vendas     sales={sales} addSale={addSale} deleteItem={requestDelete} markSaleAsPaid={markSaleAsPaid}/>}
               {page==="receber"    &&<AReceber   sales={sales} markSalePaid={markSalePaid}/>}
               {page==="estoque"    &&<Estoque    purchases={purchases} addPurchase={addPurchase} deleteItem={requestDelete}/>}
               {page==="financeiro" &&<Financeiro sales={sales} expenses={expenses} purchases={purchases}/>}
