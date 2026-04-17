@@ -458,11 +458,31 @@ function Vendas({sales,addSale, deleteItem, markAsPaid}){
   const [modal,setModal]=useState(false);
   const [form,setForm]=useState(empty);
   const [saving,setSaving]=useState(false);
+  const [isQuickSale, setIsQuickSale] = useState(false);
 
   const addItem =()=>setForm(f=>({...f,items:[...f.items,{size:TIRE_SIZES[7],qty:1,unitPrice:""}]}));
   const remItem =i=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}));
   const updItem =(i,k,v)=>setForm(f=>{const it=[...f.items];it[i]={...it[i],[k]:k==="size"?v:Number(v)};return{...f,items:it};});
   const total   =form.items.reduce((a,it)=>a+(it.qty||0)*(it.unitPrice||0),0);
+
+  const handleQuickSaleToggle = () => {
+    const newValue = !isQuickSale;
+    setIsQuickSale(newValue);
+
+    if (newValue) {
+      // Se for venda rápida, preenche o objeto FORM com dados padrão
+      setForm(f => ({
+        ...f,
+        clientName: "Venda Rápida",
+        clientPhone: "00 00000-0000",
+        region: "Balcão",
+        paid: true // Geralmente venda rápida já é paga
+      }));
+    } else {
+      // Se desmarcar, volta para o estado vazio
+      setForm(empty);
+    }
+  };
 
   const save = async () => {
     // Validação extra: nome, total e se há pelo menos 1 pneu com preço
@@ -538,8 +558,52 @@ function Vendas({sales,addSale, deleteItem, markAsPaid}){
 
       <Modal open={modal} onClose={()=>setModal(false)} title="Nova Venda">
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
-          <Field label="Nome do Cliente" span><input style={inp} value={form.clientName} onChange={e=>setForm(f=>({...f,clientName:e.target.value}))} placeholder="Ex: João Silva"/></Field>
-          <Field label="Telefone"><input style={inp} value={form.clientPhone} onChange={e=>setForm(f=>({...f,clientPhone:e.target.value}))} placeholder="71999999999"/></Field>
+          <div 
+            onClick={handleQuickSaleToggle}
+            style={{
+              gridColumn: "1 / -1", // Isso faz ele ocupar as duas colunas do grid
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "10px 16px",
+              background: isQuickSale ? "rgba(34, 197, 94, 0.05)" : "#1a1b23",
+              borderRadius: "8px",
+              cursor: "pointer",
+              border: isQuickSale ? "1px solid #22c55e" : "1px solid #2d2d38",
+              marginBottom: "6px"
+            }}
+          >
+            <span style={{ color: isQuickSale ? "#22c55e" : "#94a3b8", fontSize: "13px", fontWeight: "500", fontFamily: "Barlow, sans-serif" }}>
+              {isQuickSale ? "✓ Venda Rápida Ativada" : "Ativar Venda Rápida (Consumidor Final)"}
+            </span>
+            <div style={{
+              width: "30px", height: "16px", background: isQuickSale ? "#22c55e" : "#4b5563",
+              borderRadius: "20px", position: "relative", transition: "0.2s"
+            }}>
+              <div style={{
+                width: "12px", height: "12px", background: "white", borderRadius: "50%",
+                position: "absolute", top: "2px", left: isQuickSale ? "16px" : "2px", transition: "0.2s"
+              }} />
+            </div>
+          </div>
+          <Field label="Nome do Cliente" span>
+            <input 
+              style={{...inp, opacity: isQuickSale ? 0.6 : 1}} 
+              value={form.clientName} 
+              onChange={e => setForm(f => ({...f, clientName: e.target.value}))} 
+              disabled={isQuickSale}
+              placeholder="Ex: João Silva"
+            />
+          </Field>
+          <Field label="Telefone">
+            <input 
+              style={{...inp, opacity: isQuickSale ? 0.6 : 1}} 
+              value={form.clientPhone} 
+              onChange={e => setForm(f => ({...f, clientPhone: e.target.value}))} 
+              disabled={isQuickSale}
+              placeholder="71999999999"
+            />
+          </Field>
           <Field label="Região">
             <select style={inp} value={form.region} onChange={e=>setForm(f=>({...f,region:e.target.value}))}>
               {REGIONS.map(r=><option key={r}>{r}</option>)}
