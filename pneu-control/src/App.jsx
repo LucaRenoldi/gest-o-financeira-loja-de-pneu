@@ -342,7 +342,21 @@ function Dashboard({sales,expenses,purchases}){
   const totalFat  = useMemo(() => filteredData.sales.filter(s=>s.paid).reduce((a,s)=>a+Number(s.total),0), [filteredData]);
   const totalDesp = useMemo(() => filteredData.expenses.reduce((a,e)=>a+Number(e.value),0), [filteredData]);
   const totalRec  = useMemo(() => filteredData.sales.filter(s=>!s.paid).reduce((a,s)=>a+Number(s.total),0), [filteredData]);
-  
+
+  // Contagens baseadas no filtro atual
+  const countVendas      = filteredData.sales.length;
+  const countVendasPagas = filteredData.sales.filter(s => s.paid).length;
+  const countFiado       = filteredData.sales.filter(s => !s.paid).length;
+  const countPedidos     = filteredData.expenses.length; // Assumindo que pedidos são expenses
+  const countPneus       = filteredData.sales.reduce((a, s) => a + s.items.reduce((b, it) => b + it.qty, 0), 0);
+
+  const tituloResumo = {
+    diário: "RESUMO DO DIA",
+    semanal: "RESUMO DA SEMANA",
+    mensal: "RESUMO DO MÊS",
+    anual: "RESUMO DO ANO"  
+  }[period] || "RESUMO";
+    
   // Gráfico também respeitando o filtro
   const chartData = useMemo(() => buildDailyChart(filteredData.sales, filteredData.expenses), [filteredData]);
   const regionData=useMemo(()=>{
@@ -433,17 +447,49 @@ function Dashboard({sales,expenses,purchases}){
           </ResponsiveContainer>
         </div>
         <div style={{background:"#14151c",border:"1px solid #2d2d38",borderRadius:12,padding:24}}>
-          <h3 style={{fontFamily:"Bebas Neue",fontSize:18,color:"#f1f5f9",letterSpacing:"0.06em",marginBottom:20}}>Resumo do Mês</h3>
+          <h3 style={{fontFamily:"Bebas Neue",fontSize:18,color:"#f1f5f9",letterSpacing:"0.06em",marginBottom:20}}>
+            {period === "diário" ? "Resumo do Dia" : 
+            period === "semanal" ? "Resumo da Semana" : 
+            period === "anual" ? "Resumo do Ano" : "Resumo do Mês"}
+          </h3>
           {[
-            {label:"Total de Vendas",value:sales.length,unit:"vendas",color:B},
-            {label:"Vendas Pagas",value:sales.filter(s=>s.paid).length,unit:"vendas",color:G},
-            {label:"Fiado em Aberto",value:sales.filter(s=>!s.paid).length,unit:"vendas",color:Y},
-            {label:"Pedidos de Compra",value:purchases.length,unit:"pedidos",color:P},
-            {label:"Pneus Comprados",value:purchases.reduce((a,p)=>a+(p.totalQty||0),0),unit:"unidades",color:O},
-          ].map((r,i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:i<4?"1px solid #1e1e28":"none"}}>
-              <span style={{color:"#94a3b8",fontFamily:"Barlow,sans-serif",fontSize:14}}>{r.label}</span>
-              <span style={{color:r.color,fontFamily:"IBM Plex Mono",fontSize:16,fontWeight:500}}>{r.value} <span style={{fontSize:11,color:"#64748b"}}>{r.unit}</span></span>
+            { 
+              label: "Total de Vendas", 
+              value: filteredData.sales.length, 
+              unit: "vendas", 
+              color: B 
+            },
+            { 
+              label: "Vendas Pagas", 
+              value: filteredData.sales.filter(s => s.paid).length, 
+              unit: "vendas", 
+              color: G 
+            },
+            { 
+              label: "Fiado em Aberto", 
+              value: filteredData.sales.filter(s => !s.paid).length, 
+              unit: "vendas", 
+              color: Y 
+            },
+            { 
+              label: "Pedidos de Compra", 
+              value: filteredData.expenses.length, 
+              unit: "pedidos", 
+              color: P 
+            },
+            { 
+              label: "Pneus Comprados", 
+              // Aqui usamos o filteredData para despesas também
+              value: filteredData.expenses.reduce((a, p) => a + (p.totalQty || 0), 0), 
+              unit: "unidades", 
+              color: O 
+            },
+          ].map((r, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < 4 ? "1px solid #1e1e28" : "none" }}>
+              <span style={{ color: "#94a3b8", fontFamily: "Barlow,sans-serif", fontSize: 14 }}>{r.label}</span>
+              <span style={{ color: r.color, fontFamily: "IBM Plex Mono", fontSize: 16, fontWeight: 500 }}>
+                {r.value} <span style={{ fontSize: 11, color: "#64748b" }}>{r.unit}</span>
+              </span>
             </div>
           ))}
         </div>
