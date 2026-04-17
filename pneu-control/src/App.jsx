@@ -294,12 +294,57 @@ function buildDailyChart(sales,expenses){
 }
 
 function Dashboard({sales,expenses,purchases}){
-  const [period,setPeriod]=useState("mensal");
-  const totalFat  =useMemo(()=>sales.filter(s=>s.paid).reduce((a,s)=>a+Number(s.total),0),[sales]);
-  const totalDesp =useMemo(()=>expenses.reduce((a,e)=>a+Number(e.value),0),[expenses]);
-  const totalRec  =useMemo(()=>sales.filter(s=>!s.paid).reduce((a,s)=>a+Number(s.total),0),[sales]);
-  const chartData =useMemo(()=>buildDailyChart(sales,expenses),[sales,expenses]);
+  const [period, setPeriod] = useState("mensal");
 
+  // Filtro inteligente que observa o botão clicado
+  const filteredData = useMemo(() => {
+    const hoje = new Date();
+    
+    // TRAVA DE SEGURANÇA: Se sales ou expenses não existirem, retorna listas vazias
+    const safeSales = sales || [];
+    const safeExpenses = expenses || [];
+
+    const filtrarPorData = (item) => {
+      if (!item || !item.date) return false; // Evita erro se o item estiver incompleto
+      
+      const dataItemStr = item.date;
+      const hojeStr = hoje.toISOString().split('T')[0];
+
+      if (period === "diário") {
+        return dataItemStr === hojeStr;
+      }
+      
+      const [year, month, day] = dataItemStr.split('-').map(Number);
+      const dataItem = new Date(year, month - 1, day);
+
+      if (period === "semanal") {
+        const umaSemanaAtras = new Date();
+        umaSemanaAtras.setDate(hoje.getDate() - 7);
+        umaSemanaAtras.setHours(0, 0, 0, 0);
+        return dataItem >= umaSemanaAtras;
+      }
+      if (period === "mensal") {
+        return dataItem.getMonth() === hoje.getMonth() && dataItem.getFullYear() === hoje.getFullYear();
+      }
+      if (period === "anual") {
+        return dataItem.getFullYear() === hoje.getFullYear();
+      }
+      return true;
+    };
+
+    return {
+      // Usamos as versões "safe" (seguras) aqui
+      sales: safeSales.filter(filtrarPorData),
+      expenses: safeExpenses.filter(filtrarPorData)
+    };
+  }, [sales, expenses, period]);
+  // Cálculos usando apenas os dados filtrados
+  const totalFat  = useMemo(() => filteredData.sales.filter(s=>s.paid).reduce((a,s)=>a+Number(s.total),0), [filteredData]);
+  const totalDesp = useMemo(() => filteredData.expenses.reduce((a,e)=>a+Number(e.value),0), [filteredData]);
+  const totalRec  = useMemo(() => filteredData.sales.filter(s=>!s.paid).reduce((a,s)=>a+Number(s.total),0), [filteredData]);
+  
+  // Gráfico também respeitando o filtro
+  const chartData = useMemo(() => buildDailyChart(filteredData.sales, filteredData.expenses), [filteredData]);
   const regionData=useMemo(()=>{
     const m={};sales.forEach(s=>{m[s.region]=(m[s.region]||0)+Number(s.total);});
     return Object.entries(m).map(([name,value])=>({name,value}));
