@@ -253,24 +253,34 @@ function useSupabase() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState({ msg: "", type: "success" });
-
-  const showToast = (msg, type = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast({ msg: "", type: "success" }), 3000);
-  };
+  const [lists, setLists] = useState({ regions: [], tireSizes: [], brands: [], suppliers: [] });
 
   const fetchAll = useCallback(async () => {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
-      const [s, p, e] = await Promise.all([
+      const [s, p, e, l] = await Promise.all([
         supabase.from("sales").select("*").order("created_at", { ascending: false }),
         supabase.from("purchases").select("*").order("created_at", { ascending: false }),
         supabase.from("expenses").select("*").order("created_at", { ascending: false }),
+        supabase.from("list").select("*") // Busca a nova tabela de linhas
       ]);
-      if (s.error || p.error || e.error) throw new Error("Erro ao carregar dados");
+
+      if (s.error || p.error || e.error || l.error) throw new Error("Erro ao carregar dados");
+
       setSales(s.data || []);
       setPurchases(p.data || []);
       setExpenses(e.data || []);
+
+      // Como agora cada item é uma linha, filtramos pelo campo 'type'
+      if (l.data) {
+        setLists({
+          regions: l.data.filter(i => i.type === 'region').map(i => i.value).sort(),
+          tireSizes: l.data.filter(i => i.type === 'tire_size').map(i => i.value).sort(),
+          brands: l.data.filter(i => i.type === 'brand').map(i => i.value).sort(),
+          suppliers: l.data.filter(i => i.type === 'supplier').map(i => i.value).sort(),
+        });
+      }
     } catch (err) {
       setError("Não foi possível conectar ao banco de dados. Verifique sua conexão.");
     } finally {
@@ -278,19 +288,22 @@ function useSupabase() {
     }
   }, []);
 
-  const silentFetch = useCallback(async () => {
-  try {
-    const [s, p, e] = await Promise.all([
-      supabase.from("sales").select("*").order("created_at", { ascending: false }),
-      supabase.from("purchases").select("*").order("created_at", { ascending: false }),
-      supabase.from("expenses").select("*").order("created_at", { ascending: false }),
-    ]);
-    if (s.error || p.error || e.error) return;
-    setSales(s.data || []);
-    setPurchases(p.data || []);
-    setExpenses(e.data || []);
-  } catch (err) {}
-}, []);
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast({ msg: "", type: "success" }), 3000);
+  };
+
+
+  // Função para persistir novos itens (Regiões, Marcas, etc.)
+  const addToList = async (value, type) => {
+    const { error: err } = await supabase.from("list").insert([{ value, type }]);
+    if (err) {
+      console.error("Erro ao salvar:", err);
+      return;
+    }
+    // Recarrega os dados para que a nova opção apareça imediatamente
+    await fetchAll();
+  };
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -312,7 +325,7 @@ function useSupabase() {
       region: data.region, items: data.items, total: data.total, paid: data.paid,
     }]);
     if (err) { showToast("Erro ao salvar venda", "error"); return false; }
-    await silentFetch();
+    await fetchAll();
     showToast("Venda salva com sucesso!"); return true;
   };
 
@@ -415,13 +428,14 @@ function useSupabase() {
   };
 
   return {
-  sales: normSales, // MUDANÇA: Agora passamos a lista já com clientName
-  purchases: normPurchases, // MUDANÇA: Agora passamos com orderNumber, etc.
-  expenses,
-  loading, error, toast,
-  fetchAll, addSale, markSalePaid, addPurchase, addExpense, deleteItem,
-  updateSale, updatePurchase, updateExpense
-};  
+    sales: normSales, // MUDANÇA: Agora passamos a lista já com clientName
+    purchases: normPurchases, // MUDANÇA: Agora passamos com orderNumber, etc.
+    expenses,
+    lists,
+    loading, error, toast,
+    fetchAll, addSale, markSalePaid, addPurchase, addExpense, deleteItem,
+    updateSale, updatePurchase, updateExpense, addToList
+  };
 }
 
 /* ─────────────── Dashboard ─────────────── */
@@ -745,7 +759,7 @@ function Dashboard({ sales, expenses, purchases }) {
 }
 
 /* ─────────────── Vendas ─────────────── */
-function Vendas({ sales, addSale, updateSale, deleteItem }) {
+function Vendas({ sales, addSale, updateSale, deleteItem, addToList, lists, TIRE_SIZES }) {
   const empty = { clientName: "", clientPhone: "", region: REGIONS[0], items: [{ size: TIRE_SIZES[7], qty: 1, unitPrice: "" }], paid: true, date: today(), time: nowT() };
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(empty);
@@ -906,9 +920,13 @@ function Vendas({ sales, addSale, updateSale, deleteItem }) {
               onChange={e => setForm(f => ({ ...f, clientPhone: e.target.value }))} disabled={isQuickSale} placeholder="71999999999" />
           </Field>
           <Field label="Região">
-            <select style={inp} value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value }))}>
-              {REGIONS.map(r => <option key={r}>{r}</option>)}
-            </select>
+            <ComboInput
+              value={form.region} // Use form.region
+              options={lists.regions}
+              onChange={(v) => setForm({ ...form, region: v })} // Use setForm
+              onAddNew={(v) => addToList(v, 'region')}
+              placeholder="Selecione ou digite a região"
+            />
           </Field>
           <Field label="Pagamento">
             <select style={inp} value={form.paid ? "pago" : "fiado"} onChange={e => setForm(f => ({ ...f, paid: e.target.value === "pago" }))}>
@@ -916,8 +934,24 @@ function Vendas({ sales, addSale, updateSale, deleteItem }) {
               <option value="fiado">Fiado (A Receber)</option>
             </select>
           </Field>
-          <Field label="Data"><input style={inp} type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></Field>
-          <Field label="Hora"><input style={inp} type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></Field>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <Field label="Data">
+              <input
+                type="date"
+                style={inp}
+                value={form.date} // Use form.date
+                onChange={e => setForm({ ...form, date: e.target.value })} // Use setForm
+              />
+            </Field>
+            <Field label="Hora">
+              <input
+                type="time"
+                style={inp}
+                value={form.time} // Use form.time
+                onChange={e => setForm({ ...form, time: e.target.value })} // Use setForm
+              />
+            </Field>
+          </div>
         </div>
         <div style={{ borderTop: "1px solid #2d2d38", paddingTop: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -926,10 +960,34 @@ function Vendas({ sales, addSale, updateSale, deleteItem }) {
           </div>
           {form.items.map((it, i) => (
             <div key={i} style={{ display: "grid", gridTemplateColumns: "1.8fr 70px 110px 30px", gap: 8, marginBottom: 8, alignItems: "center" }}>
-              <select style={inp} value={it.size} onChange={e => updItem(i, "size", e.target.value)}>{TIRE_SIZES.map(s => <option key={s}>{s}</option>)}</select>
-              <input style={{ ...inp, textAlign: "center" }} type="number" min="1" value={it.qty} onChange={e => updItem(i, "qty", e.target.value)} placeholder="Qtd" />
-              <input style={inp} type="number" min="0" step="0.01" value={it.unitPrice || ""} onChange={e => updItem(i, "unitPrice", e.target.value)} placeholder="R$/pneu" />
-              {form.items.length > 1 && <button onClick={() => remItem(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563" }}><X size={15} /></button>}
+              <ComboInput
+                value={it.size}
+                options={TIRE_SIZES} // Agora vem do banco!
+                onChange={(v) => updItem(i, "size", v)}
+                placeholder="Medida"
+              />
+              <input
+                style={{ ...inp, textAlign: "center" }}
+                type="number"
+                min="1"
+                value={it.qty}
+                onChange={e => updItem(i, "qty", e.target.value)}
+                placeholder="Qtd"
+              />
+              <input
+                style={inp}
+                type="number"
+                min="0"
+                step="0.01"
+                value={it.unitPrice || ""}
+                onChange={e => updItem(i, "unitPrice", e.target.value)}
+                placeholder="R$/pneu"
+              />
+              {form.items.length > 1 && (
+                <button onClick={() => remItem(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563" }}>
+                  <X size={15} />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -1551,7 +1609,7 @@ export default function App() {
     sales, purchases, expenses,
     loading, error, toast,
     fetchAll, addSale, markSalePaid, addPurchase, addExpense, deleteItem,
-    updateSale, updatePurchase, updateExpense
+    updateSale, updatePurchase, updateExpense, addToList, lists
   } = useSupabase();
 
   const fiadoN = sales.filter(s => !s.paid).length;
@@ -1612,7 +1670,7 @@ export default function App() {
           ? <Spinner msg="Carregando dados do servidor..." />
           : <ErrorBoundary>
             {page === "dashboard" && <Dashboard sales={sales} expenses={expenses} purchases={purchases} />}
-            {page === "vendas" && <Vendas sales={sales} addSale={addSale} updateSale={updateSale} deleteItem={requestDelete} />}
+            {page === "vendas" && <Vendas sales={sales} addSale={addSale} updateSale={updateSale} deleteItem={requestDelete} addToList={addToList} lists={lists} TIRE_SIZES={TIRE_SIZES} />}
             {page === "receber" && <AReceber sales={sales} markSalePaid={markSalePaid} />}
             {page === "estoque" && <Estoque
               purchases={purchases}
