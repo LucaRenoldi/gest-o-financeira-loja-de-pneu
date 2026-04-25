@@ -6,7 +6,7 @@ import {
 import {
   LayoutDashboard, ShoppingBag, CreditCard, Package,
   DollarSign, Tag, Plus, X, Check, TrendingUp, TrendingDown,
-  Truck, Eye, Phone, MapPin, Loader2, WifiOff, Trash2
+  Truck, Eye, Phone, MapPin, Loader2, WifiOff, Trash2, Search, Pencil
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
@@ -58,7 +58,21 @@ const FONTS = `
 const O = "#f97316", G = "#22c55e", R = "#ef4444", B = "#3b82f6", Y = "#eab308", P = "#a855f7";
 const PC = ["#f97316", "#3b82f6", "#22c55e", "#eab308", "#a855f7", "#ec4899", "#14b8a6", "#f43f5e"];
 
-const TIRE_SIZES = ["165/70R13", "175/65R14", "185/60R14", "185/65R15", "195/55R15", "195/60R15", "195/65R15", "205/55R16", "205/60R16", "215/55R17", "215/60R17", "225/45R17", "225/55R17", "235/55R18", "245/45R18", "255/35R18", "265/60R18", "265/65R17", "275/55R20", "285/35R19"];
+const TIRE_SIZES = [
+  // --- CARGA / CAMINHÃO (Os que você mais usa) ---
+  "295/80 R22.5", "275/80 R22.5", "215/75 R17.5", "235/75 R17.5",
+  "11.00 R22", "10.00 R20", "315/80 R22.5", "255/70 R22.5",
+
+  // --- CAMINHONETE / SUV / VAN ---
+  "265/70 R16", "235/75 R15", "31x10.5 R15", "205/75 R16C",
+  "225/75 R16C", "215/80 R16", "245/70 R16", "265/60 R18",
+
+  // --- PASSEIO (Populares) ---
+  "175/70 R13", "175/75 R13", "175/65 R14", "175/70 R14", "175/75 R14", "185/60 R14", "185/70 R14", "185/65 R14",
+  "185/60 R15", "185/65 R15", "195/50 R15", "195/55 R15",
+  "195/60 R15", "195/65 R15", "205/55 R16", "205/60 R16",
+  "215/50 R17", "225/45 R17", "225/50 R17", "235/45 R18"
+].sort(); // O .sort() coloca em ordem alfabética/numérica automaticamente
 const REGIONS = ["Salvador", "Lauro de Freitas", "Camaçari", "Simões Filho", "Dias d'Ávila", "São Francisco do Conde", "Feira de Santana", "Outras"];
 const EXP_CATS = ["Aluguel", "Energia", "Água", "Internet", "Funcionários", "Frete", "Embalagem", "Manutenção", "Alimentação", "Transporte", "Saúde", "Lazer", "Outros"];
 const SUPPLIERS = ["Bridgestone BR", "Michelin Dist.", "Goodyear SP", "Continental MG", "Pirelli RJ", "JK Pneus", "Pneus Mix"];
@@ -78,6 +92,82 @@ function Label({ children }) {
 }
 function Field({ label, children, span }) {
   return <div style={{ gridColumn: span ? "1/-1" : "auto" }}><Label>{label}</Label>{children}</div>;
+}
+
+function ComboInput({ value, onChange, options, placeholder, onAddNew }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value || "");
+  const ref = React.useRef(null);
+
+  useEffect(() => { setQuery(value || ""); }, [value]);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filtered = options.filter(o => o.toLowerCase().includes(query.toLowerCase()));
+  const exactMatch = options.some(o => o.toLowerCase() === query.toLowerCase());
+  const showAdd = onAddNew && query.trim() && !exactMatch;
+
+  const select = (opt) => { setQuery(opt); onChange(opt); setOpen(false); };
+
+  const handleAdd = () => {
+    const trimmed = query.trim();
+    onAddNew(trimmed);
+    onChange(trimmed);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <input
+        style={inp}
+        value={query}
+        placeholder={placeholder}
+        onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={e => { if (e.key === "Enter" && showAdd) handleAdd(); if (e.key === "Escape") setOpen(false); }}
+      />
+      {open && (filtered.length > 0 || showAdd) && (
+        <div style={{
+          position: "absolute", top: "110%", left: 0, right: 0,
+          background: "#1a1b26", border: "1px solid #2d2d38", borderRadius: 8,
+          zIndex: 200, maxHeight: 220, overflowY: "auto",
+          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.5)", padding: 4
+        }}>
+          {filtered.map((opt, i) => (
+            <div key={i} onClick={() => select(opt)} style={{
+              padding: "10px 12px", color: "#f1f5f9", fontSize: 13,
+              cursor: "pointer", borderRadius: 6, transition: "background .15s"
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "#2d2d38"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >{opt}</div>
+          ))}
+
+          {/* Opção de adicionar novo */}
+          {showAdd && (
+            <>
+              {filtered.length > 0 && <div style={{ borderTop: "1px solid #2d2d38", margin: "4px 0" }} />}
+              <div onClick={handleAdd} style={{
+                padding: "10px 12px", color: O, fontSize: 13,
+                cursor: "pointer", borderRadius: 6, transition: "background .15s",
+                display: "flex", alignItems: "center", gap: 8
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = `${O}15`}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <Plus size={13} />
+                Adicionar "<strong>{query.trim()}</strong>"
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ── Spinner de carregamento ── */
@@ -188,6 +278,20 @@ function useSupabase() {
     }
   }, []);
 
+  const silentFetch = useCallback(async () => {
+  try {
+    const [s, p, e] = await Promise.all([
+      supabase.from("sales").select("*").order("created_at", { ascending: false }),
+      supabase.from("purchases").select("*").order("created_at", { ascending: false }),
+      supabase.from("expenses").select("*").order("created_at", { ascending: false }),
+    ]);
+    if (s.error || p.error || e.error) return;
+    setSales(s.data || []);
+    setPurchases(p.data || []);
+    setExpenses(e.data || []);
+  } catch (err) {}
+}, []);
+
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   /* Realtime — sincroniza entre pc e celular automaticamente */
@@ -208,6 +312,7 @@ function useSupabase() {
       region: data.region, items: data.items, total: data.total, paid: data.paid,
     }]);
     if (err) { showToast("Erro ao salvar venda", "error"); return false; }
+    await silentFetch();
     showToast("Venda salva com sucesso!"); return true;
   };
 
@@ -273,11 +378,50 @@ function useSupabase() {
     totalCost: p.total_cost,
   })), [purchases]);
 
-  return {
-    sales: normSales, purchases: normPurchases, expenses,
-    loading, error, toast,
-    fetchAll, addSale, markSalePaid, addPurchase, addExpense, deleteItem
+  const updateSale = async (id, data) => {
+    const { error: err } = await supabase.from("sales").update({
+      date: data.date,
+      time: data.time,
+      client_name: data.clientName,
+      client_phone: data.clientPhone,
+      region: data.region,
+      items: data.items,
+      total: Number(data.total),
+      paid: data.paid,
+    }).eq("id", id);
+    if (err) { showToast("Erro ao atualizar venda: " + err.message, "error"); return false; }
+    await fetchAll(); // ← força re-fetch imediato
+    showToast("Venda atualizada!"); return true;
   };
+
+  const updatePurchase = async (id, data) => {
+    const { error: err } = await supabase.from("purchases").update({
+      order_number: data.orderNumber, brand: data.brand,
+      date: data.date, supplier: data.supplier, items: data.items,
+      total_qty: data.totalQty, total_cost: data.totalCost,
+    }).eq("id", id);
+    if (err) { showToast("Erro ao atualizar pedido", "error"); return false; }
+    showToast("Pedido atualizado!"); return true;
+  };
+
+  const updateExpense = async (id, data) => {
+    const { error: err } = await supabase.from("expenses").update({
+      date: data.date, time: data.time, category: data.category,
+      tag: data.tag, description: data.description,
+      value: parseFloat(data.value), payee: data.payee,
+    }).eq("id", id);
+    if (err) { showToast("Erro ao atualizar despesa", "error"); return false; }
+    showToast("Despesa atualizada!"); return true;
+  };
+
+  return {
+  sales: normSales, // MUDANÇA: Agora passamos a lista já com clientName
+  purchases: normPurchases, // MUDANÇA: Agora passamos com orderNumber, etc.
+  expenses,
+  loading, error, toast,
+  fetchAll, addSale, markSalePaid, addPurchase, addExpense, deleteItem,
+  updateSale, updatePurchase, updateExpense
+};  
 }
 
 /* ─────────────── Dashboard ─────────────── */
@@ -340,10 +484,61 @@ function Dashboard({ sales, expenses, purchases }) {
       expenses: safeExpenses.filter(filtrarPorData)
     };
   }, [sales, expenses, period]);
+
+  const prevFilteredData = useMemo(() => {
+    const hoje = new Date();
+    const safeSales = sales || [];
+    const safeExpenses = expenses || [];
+
+    const filtrarPeriodoAnterior = (item) => {
+      if (!item?.date) return false;
+      const [y, m, d] = item.date.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+
+      if (period === "diário") {
+        const ontem = new Date(hoje);
+        ontem.setDate(hoje.getDate() - 1);
+        return dt.toDateString() === ontem.toDateString();
+      }
+      if (period === "semanal") {
+        const ini = new Date(hoje); ini.setDate(hoje.getDate() - 14); ini.setHours(0, 0, 0, 0);
+        const fim = new Date(hoje); fim.setDate(hoje.getDate() - 8); fim.setHours(23, 59, 59, 999);
+        return dt >= ini && dt <= fim;
+      }
+      if (period === "mensal") {
+        const prev = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+        return dt.getMonth() === prev.getMonth() && dt.getFullYear() === prev.getFullYear();
+      }
+      if (period === "anual") {
+        return dt.getFullYear() === hoje.getFullYear() - 1;
+      }
+      return false;
+    };
+
+    return {
+      sales: safeSales.filter(filtrarPeriodoAnterior),
+      expenses: safeExpenses.filter(filtrarPeriodoAnterior),
+    };
+  }, [sales, expenses, period]);
+
   // Cálculos usando apenas os dados filtrados
   const totalFat = useMemo(() => filteredData.sales.filter(s => s.paid).reduce((a, s) => a + Number(s.total), 0), [filteredData]);
   const totalDesp = useMemo(() => filteredData.expenses.reduce((a, e) => a + Number(e.value), 0), [filteredData]);
   const totalRec = useMemo(() => filteredData.sales.filter(s => !s.paid).reduce((a, s) => a + Number(s.total), 0), [filteredData]);
+
+  const prevFat = useMemo(() => prevFilteredData.sales.filter(s => s.paid).reduce((a, s) => a + Number(s.total), 0), [prevFilteredData]);
+  const prevDesp = useMemo(() => prevFilteredData.expenses.reduce((a, e) => a + Number(e.value), 0), [prevFilteredData]);
+  const prevLucro = prevFat - prevDesp;
+
+  const calcPct = (curr, prev) => {
+    if (prev === 0) return curr > 0 ? { label: "+100% vs anterior", up: true } : { label: "Sem dados anteriores", up: true };
+    const diff = ((curr - prev) / Math.abs(prev)) * 100;
+    return { label: `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}% vs anterior`, up: diff >= 0 };
+  };
+
+  const fatPct = calcPct(totalFat, prevFat);
+  const despPct = calcPct(totalDesp, prevDesp);
+  const lucroPct = calcPct(totalFat - totalDesp, prevLucro);
 
   // Contagens baseadas no filtro atual
   const countVendas = filteredData.sales.length;
@@ -399,9 +594,9 @@ function Dashboard({ sales, expenses, purchases }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 24 }}>
-        <KPI title="Faturamento" value={fmt(totalFat)} sub="+12% vs anterior" up icon={TrendingUp} color={G} />
-        <KPI title="Despesas" value={fmt(totalDesp)} sub="-3% vs anterior" up icon={DollarSign} color={R} />
-        <KPI title="Lucro Líquido" value={fmt(totalFat - totalDesp)} sub="+18% vs anterior" up icon={TrendingUp} color={O} />
+        <KPI title="Faturamento" value={fmt(totalFat)} sub={fatPct.label} up={fatPct.up} icon={TrendingUp} color={G} />
+        <KPI title="Despesas" value={fmt(totalDesp)} sub={despPct.label} up={!despPct.up} icon={DollarSign} color={R} />
+        <KPI title="Lucro Líquido" value={fmt(totalFat - totalDesp)} sub={lucroPct.label} up={lucroPct.up} icon={TrendingUp} color={O} />
         <KPI title="A Receber" value={fmt(totalRec)} sub={`${sales.filter(s => !s.paid).length} em aberto`} icon={CreditCard} color={Y} />
       </div>
 
@@ -550,12 +745,34 @@ function Dashboard({ sales, expenses, purchases }) {
 }
 
 /* ─────────────── Vendas ─────────────── */
-function Vendas({ sales, addSale, deleteItem, markAsPaid }) {
+function Vendas({ sales, addSale, updateSale, deleteItem }) {
   const empty = { clientName: "", clientPhone: "", region: REGIONS[0], items: [{ size: TIRE_SIZES[7], qty: 1, unitPrice: "" }], paid: true, date: today(), time: nowT() };
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [isQuickSale, setIsQuickSale] = useState(false);
+  const [editingId, setEditingId] = useState(null); // ← ID do registro em edição
+
+  const openNew = () => { setEditingId(null); setForm(empty); setIsQuickSale(false); setModal(true); };
+  const openEdit = (s) => {
+    const isQS = s.clientName === "Venda Rápida";
+    setEditingId(s.id);
+    setIsQuickSale(isQS);  // ← mantém o estado correto
+    setForm({
+      clientName: s.clientName || "",
+      clientPhone: s.clientPhone || "",
+      region: s.region || REGIONS[0],
+      items: (s.items || []).map(it => ({
+        size: it.size || TIRE_SIZES[7],
+        qty: Number(it.qty) || 1,
+        unitPrice: it.unitPrice != null ? String(it.unitPrice) : "",
+      })),
+      paid: s.paid ?? true,
+      date: s.date || today(),
+      time: s.time || nowT(),
+    });
+    setModal(true);
+  };
 
   const addItem = () => setForm(f => ({ ...f, items: [...f.items, { size: TIRE_SIZES[7], qty: 1, unitPrice: "" }] }));
   const remItem = i => setForm(f => ({ ...f, items: f.items.filter((_, j) => j !== i) }));
@@ -565,32 +782,39 @@ function Vendas({ sales, addSale, deleteItem, markAsPaid }) {
   const handleQuickSaleToggle = () => {
     const newValue = !isQuickSale;
     setIsQuickSale(newValue);
-
     if (newValue) {
-      // Se for venda rápida, preenche o objeto FORM com dados padrão
-      setForm(f => ({
-        ...f,
-        clientName: "Venda Rápida",
-        clientPhone: "00 00000-0000",
-        region: "Balcão",
-        paid: true // Geralmente venda rápida já é paga
-      }));
+      setForm(f => ({ ...f, clientName: "Venda Rápida", clientPhone: "00 00000-0000", region: "Balcão", paid: true }));
     } else {
-      // Se desmarcar, volta para o estado vazio
       setForm(empty);
     }
   };
 
   const save = async () => {
-    // Validação extra: nome, total e se há pelo menos 1 pneu com preço
-    if (!form.clientName || total <= 0 || form.items.some(it => !it.unitPrice)) {
-      showToast("Preencha o cliente e os valores dos pneus", "error");
-      return;
-    }
+    const totalCalc = form.items.reduce((a, it) => a + (Number(it.qty) || 0) * (parseFloat(it.unitPrice) || 0), 0);
+    if (!form.clientName || totalCalc <= 0) return;
     setSaving(true);
-    const ok = await addSale({ ...form, total });
+
+    const payload = {
+      clientName: form.clientName,      // ← vem do state, não do DOM
+      clientPhone: form.clientPhone,
+      region: form.region,
+      items: form.items.map(it => ({
+        size: it.size,
+        qty: Number(it.qty),
+        unitPrice: parseFloat(it.unitPrice),
+      })),
+      paid: form.paid,
+      date: form.date,
+      time: form.time,
+      total: totalCalc,
+    };
+
+    const ok = editingId
+      ? await updateSale(editingId, payload)
+      : await addSale(payload);
+
     setSaving(false);
-    if (ok) { setModal(false); setForm(empty); }
+    if (ok) { setModal(false); setForm(empty); setEditingId(null); setIsQuickSale(false); }
   };
 
   return (
@@ -600,7 +824,7 @@ function Vendas({ sales, addSale, deleteItem, markAsPaid }) {
           <h2 style={{ fontFamily: "Bebas Neue", fontSize: 30, color: "#f1f5f9", letterSpacing: "0.05em" }}>Vendas</h2>
           <p style={{ color: "#64748b", fontFamily: "Barlow,sans-serif", fontSize: 13, marginTop: 3 }}>{sales.length} vendas registradas</p>
         </div>
-        <button onClick={() => setModal(true)} style={{ ...btnS(), display: "flex", alignItems: "center", gap: 8 }}>
+        <button onClick={openNew} style={{ ...btnS(), display: "flex", alignItems: "center", gap: 8 }}>
           <Plus size={15} /> Nova Venda
         </button>
       </div>
@@ -609,7 +833,7 @@ function Vendas({ sales, addSale, deleteItem, markAsPaid }) {
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 680 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid #2d2d38" }}>
-              {["Data/Hora", "Cliente", "Região", "Pneus", "Total", "Status"].map(h => (
+              {["Data/Hora", "Cliente", "Região", "Pneus", "Total", "Status", ""].map(h => (
                 <th key={h} style={{ padding: "13px 16px", textAlign: "left", color: "#4b5563", fontSize: 10, fontFamily: "Barlow,sans-serif", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.09em" }}>{h}</th>
               ))}
             </tr>
@@ -637,14 +861,18 @@ function Vendas({ sales, addSale, deleteItem, markAsPaid }) {
                   </span>
                 </td>
                 <td style={{ padding: "13px 16px" }}>
-                  <button
-                    onClick={() => deleteItem("sales", s.id, s.clientName)}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563" }}
-                    onMouseEnter={e => e.currentTarget.style.color = R}
-                    onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => openEdit(s)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563" }}
+                      onMouseEnter={e => e.currentTarget.style.color = B}
+                      onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                      <Pencil size={15} />
+                    </button>
+                    <button onClick={() => deleteItem("sales", s.id, s.clientName)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563" }}
+                      onMouseEnter={e => e.currentTarget.style.color = R}
+                      onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -653,53 +881,29 @@ function Vendas({ sales, addSale, deleteItem, markAsPaid }) {
         {sales.length === 0 && <div style={{ padding: 48, textAlign: "center", color: "#374151", fontFamily: "Barlow,sans-serif" }}>Nenhuma venda registrada ainda.</div>}
       </div>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="Nova Venda">
+      <Modal open={modal} onClose={() => { setModal(false); setEditingId(null); }} title={editingId ? "Editar Venda" : "Nova Venda"}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-          <div
-            onClick={handleQuickSaleToggle}
-            style={{
-              gridColumn: "1 / -1", // Isso faz ele ocupar as duas colunas do grid
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "10px 16px",
-              background: isQuickSale ? "rgba(34, 197, 94, 0.05)" : "#1a1b23",
-              borderRadius: "8px",
-              cursor: "pointer",
-              border: isQuickSale ? "1px solid #22c55e" : "1px solid #2d2d38",
-              marginBottom: "6px"
-            }}
-          >
-            <span style={{ color: isQuickSale ? "#22c55e" : "#94a3b8", fontSize: "13px", fontWeight: "500", fontFamily: "Barlow, sans-serif" }}>
-              {isQuickSale ? "✓ Venda Rápida Ativada" : "Ativar Venda Rápida (Consumidor Final)"}
-            </span>
-            <div style={{
-              width: "30px", height: "16px", background: isQuickSale ? "#22c55e" : "#4b5563",
-              borderRadius: "20px", position: "relative", transition: "0.2s"
+          {!editingId && (
+            <div onClick={handleQuickSaleToggle} style={{
+              gridColumn: "1 / -1", display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 16px", background: isQuickSale ? "rgba(34,197,94,0.05)" : "#1a1b23",
+              borderRadius: 8, cursor: "pointer", border: isQuickSale ? "1px solid #22c55e" : "1px solid #2d2d38", marginBottom: 6
             }}>
-              <div style={{
-                width: "12px", height: "12px", background: "white", borderRadius: "50%",
-                position: "absolute", top: "2px", left: isQuickSale ? "16px" : "2px", transition: "0.2s"
-              }} />
+              <span style={{ color: isQuickSale ? "#22c55e" : "#94a3b8", fontSize: 13, fontWeight: 500, fontFamily: "Barlow,sans-serif" }}>
+                {isQuickSale ? "✓ Venda Rápida Ativada" : "Ativar Venda Rápida (Consumidor Final)"}
+              </span>
+              <div style={{ width: 30, height: 16, background: isQuickSale ? "#22c55e" : "#4b5563", borderRadius: 20, position: "relative", transition: "0.2s" }}>
+                <div style={{ width: 12, height: 12, background: "white", borderRadius: "50%", position: "absolute", top: 2, left: isQuickSale ? 16 : 2, transition: "0.2s" }} />
+              </div>
             </div>
-          </div>
+          )}
           <Field label="Nome do Cliente" span>
-            <input
-              style={{ ...inp, opacity: isQuickSale ? 0.6 : 1 }}
-              value={form.clientName}
-              onChange={e => setForm(f => ({ ...f, clientName: e.target.value }))}
-              disabled={isQuickSale}
-              placeholder="Ex: João Silva"
-            />
+            <input style={{ ...inp, opacity: isQuickSale ? 0.6 : 1 }} value={form.clientName}
+              onChange={e => setForm(f => ({ ...f, clientName: e.target.value }))} disabled={isQuickSale} placeholder="Ex: João Silva" />
           </Field>
           <Field label="Telefone">
-            <input
-              style={{ ...inp, opacity: isQuickSale ? 0.6 : 1 }}
-              value={form.clientPhone}
-              onChange={e => setForm(f => ({ ...f, clientPhone: e.target.value }))}
-              disabled={isQuickSale}
-              placeholder="71999999999"
-            />
+            <input style={{ ...inp, opacity: isQuickSale ? 0.6 : 1 }} value={form.clientPhone}
+              onChange={e => setForm(f => ({ ...f, clientPhone: e.target.value }))} disabled={isQuickSale} placeholder="71999999999" />
           </Field>
           <Field label="Região">
             <select style={inp} value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value }))}>
@@ -734,9 +938,9 @@ function Vendas({ sales, addSale, deleteItem, markAsPaid }) {
           <span style={{ color: O, fontFamily: "IBM Plex Mono", fontSize: 22, fontWeight: 500 }}>{fmt(total)}</span>
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button onClick={() => setModal(false)} style={btnS("outline")}>Cancelar</button>
+          <button onClick={() => { setModal(false); setEditingId(null); }} style={btnS("outline")}>Cancelar</button>
           <button onClick={save} disabled={saving} style={{ ...btnS(), display: "flex", alignItems: "center", gap: 8, opacity: saving ? .7 : 1 }}>
-            {saving ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />Salvando...</> : "Salvar Venda"}
+            {saving ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />Salvando...</> : editingId ? "Salvar Alterações" : "Salvar Venda"}
           </button>
         </div>
       </Modal>
@@ -795,105 +999,331 @@ function AReceber({ sales, markSalePaid }) {
   );
 }
 
-/* ─────────────── Estoque ─────────────── */
-function Estoque({ purchases, addPurchase, deleteItem }) {
-  const emptyF = { orderNumber: "", brand: BRANDS[0], date: today(), supplier: SUPPLIERS[0], totalCost: "", items: [{ size: TIRE_SIZES[7], qty: 4 }] };
+function Estoque({ purchases, addPurchase, deleteItem, BRANDS, SUPPLIERS, TIRE_SIZES, today, fmt, fmtD, btnS, inp, Field, Label, Modal, O, Loader2, Plus, Truck, Trash2, updatePurchaseDate }) {
+
+  const [brandList, setBrandList] = useState(BRANDS || []);
+  const [supplierList, setSupplierList] = useState(SUPPLIERS || []);
+  const [editDate, setEditDate] = useState({ open: false, item: null });
+  const [editingId, setEditingId] = useState(null);
+
+  // Carrega as listas do Supabase ao montar
+  useEffect(() => {
+    const fetchLists = async () => {
+      const { data, error } = await supabase
+        .from("lists")
+        .select("key, values")
+        .in("key", ["brands", "suppliers"]);
+      if (error || !data) return;
+      data.forEach(row => {
+        if (row.key === "brands") setBrandList(row.values);
+        if (row.key === "suppliers") setSupplierList(row.values);
+      });
+    };
+    fetchLists();
+  }, []);
+
+  // Salva lista atualizada no Supabase
+  const persistList = async (key, updated) => {
+    await supabase
+      .from("lists")
+      .update({ values: updated, updated_at: new Date().toISOString() })
+      .eq("key", key);
+  };
+
+  const addBrand = (v) => {
+    const updated = [...brandList, v];
+    setBrandList(updated);
+    persistList("brands", updated);
+  };
+
+  const addSupplier = (v) => {
+    const updated = [...supplierList, v];
+    setSupplierList(updated);
+    persistList("suppliers", updated);
+  };
+
+  const emptyF = {
+    orderNumber: "", brand: brandList[0] || "", date: today ? today() : "",
+    supplier: supplierList[0] || "", items: [{ size: TIRE_SIZES?.[7] || "", qty: 4, price: 0 }]
+  };
+
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(emptyF);
   const [saving, setSaving] = useState(false);
-  const addItem = () => setForm(f => ({ ...f, items: [...f.items, { size: TIRE_SIZES[7], qty: 4 }] }));
-  const updItem = (i, k, v) => setForm(f => { const it = [...f.items]; it[i] = { ...it[i], [k]: k === "size" ? v : Number(v) }; return { ...f, items: it }; });
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const [searchOrder, setSearchOrder] = useState("");
+  const [searchSize, setSearchSize] = useState("");
+
+  const addItem = () => setForm(f => ({ ...f, items: [...f.items, { size: TIRE_SIZES[7], qty: 4, price: 0 }] }));
+  const remItem = i => setForm(f => ({ ...f, items: f.items.filter((_, j) => j !== i) }));
+
+  const updItem = (i, k, v) => setForm(f => {
+    const it = [...f.items]; it[i] = { ...it[i], [k]: k === "size" ? v : Number(v) };
+    return { ...f, items: it };
+  });
+
+  const calculatedTotal = useMemo(() => {
+    return form.items.reduce((acc, item) => acc + (Number(item.qty || 0) * Number(item.price || 0)), 0);
+  }, [form.items]);
+
+  const filteredPurchases = useMemo(() => {
+    return (purchases || []).filter(p => {
+      const matchesOrder = (p.orderNumber || "").toLowerCase().includes(searchOrder.toLowerCase()) ||
+        (p.supplier || "").toLowerCase().includes(searchOrder.toLowerCase());
+      const matchesSize = searchSize === "" || (p.items || []).some(it =>
+        (it.size || "").toLowerCase().includes(searchSize.toLowerCase()));
+      return matchesOrder && matchesSize;
+    });
+  }, [purchases, searchOrder, searchSize]);
+
+  // ── Validação inline ──
+  const validate = () => {
+    const e = {};
+    if (!form.orderNumber.trim()) e.orderNumber = "Campo obrigatório. Por favor preencher!";
+    if (!form.brand.trim()) e.brand = "Campo obrigatório. Por favor preencher!";
+    if (!form.supplier.trim()) e.supplier = "Campo obrigatório. Por favor preencher!";
+    if (!form.date) e.date = "Campo obrigatório. Por favor preencher!";
+    const itemErrors = form.items.map(it => {
+      const ie = {};
+      if (!it.size.trim()) ie.size = "Informe a medida!";
+      if (!it.price || it.price <= 0) ie.price = "Informe o valor!";
+      return ie;
+    });
+    if (itemErrors.some(ie => Object.keys(ie).length > 0)) e.items = itemErrors;
+    setErrors(e);
+    return Object.keys(e).length === 0 && !e.items;
+  };
+
+  const errStyle = { color: "#ef4444", fontSize: 11, fontFamily: "Barlow,sans-serif", marginTop: 4 };
+
+  const openNew = () => { setEditingId(null); setForm(emptyF); setErrors({}); setModal(true); };
+  const openEdit = (p) => {
+    setEditingId(p.id);
+    setForm({
+      orderNumber: p.orderNumber || "",
+      brand: p.brand || "",
+      date: p.date || today(),
+      supplier: p.supplier || "",
+      items: (p.items || []).map(it => ({
+        size: it.size || "",
+        qty: Number(it.qty) || 1,
+        price: it.price != null ? it.price : "",  // ← evita undefined
+      })),
+    });
+    setErrors({});
+    setModal(true);
+  };
 
   const save = async () => {
-    if (!form.orderNumber) return;
+    if (!validate()) return;
     setSaving(true);
-    const ok = await addPurchase(form);
+    const itemsNormalized = form.items.map(it => ({ ...it, qty: Number(it.qty) || 0, price: parseFloat(it.price) || 0 }));
+    const totalCost = itemsNormalized.reduce((a, it) => a + it.qty * it.price, 0);
+    const totalQty = itemsNormalized.reduce((a, it) => a + it.qty, 0);
+    const ok = editingId
+      ? await updatePurchase(editingId, { ...form, items: itemsNormalized, totalCost, totalQty })
+      : await addPurchase({ ...form, items: itemsNormalized, totalCost, totalQty });
     setSaving(false);
-    if (ok) { setModal(false); setForm(emptyF); }
+    if (ok) { setModal(false); setForm(emptyF); setErrors({}); setEditingId(null); }
   };
 
   return (
     <div style={{ animation: "fadeIn .3s ease" }}>
+      {/* HEADER */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
           <h2 style={{ fontFamily: "Bebas Neue", fontSize: 30, color: "#f1f5f9", letterSpacing: "0.05em" }}>Estoque / Compras</h2>
-          <p style={{ color: "#64748b", fontFamily: "Barlow,sans-serif", fontSize: 13, marginTop: 3 }}>{purchases.length} pedidos · {purchases.reduce((a, p) => a + (p.totalQty || 0), 0)} pneus comprados</p>
+          <p style={{ color: "#64748b", fontFamily: "Barlow,sans-serif", fontSize: 13, marginTop: 3 }}>
+            {filteredPurchases.length} pedidos encontrados · {filteredPurchases.reduce((a, p) => a + (p.totalQty || 0), 0)} pneus
+          </p>
         </div>
         <button onClick={() => setModal(true)} style={{ ...btnS(), display: "flex", alignItems: "center", gap: 8 }}>
           <Plus size={15} /> Novo Pedido
         </button>
       </div>
+
+      {/* FILTROS */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, background: "#14151c", padding: 16, borderRadius: 12, border: "1px solid #2d2d38" }}>
+        <div style={{ flex: 2, position: "relative" }}>
+          <label style={{ color: "#64748b", fontSize: 11, display: "block", marginBottom: 6, textTransform: "uppercase" }}>Número do Pedido</label>
+          <div style={{ position: "relative" }}>
+            <input style={{ ...inp, paddingLeft: 35 }} placeholder="Buscar por # ou fornecedor..." value={searchOrder} onChange={e => setSearchOrder(e.target.value)} />
+            <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#4b5563" }} />
+          </div>
+        </div>
+        <div style={{ flex: 1, position: "relative" }}>
+          <label style={{ color: "#64748b", fontSize: 11, display: "block", marginBottom: 6, textTransform: "uppercase" }}>Filtrar por Medida</label>
+          <div style={{ position: "relative" }}>
+            <input style={inp} placeholder="Digite a medida..." value={searchSize} onChange={e => setSearchSize(e.target.value)}
+              onFocus={() => setShowSuggestions(true)} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} />
+            {showSuggestions && (
+              <div style={{ position: "absolute", top: "110%", left: 0, right: 0, background: "#1a1b26", border: "1px solid #2d2d38", borderRadius: 8, zIndex: 100, maxHeight: 250, overflowY: "auto", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.5)", padding: 4 }}>
+                {TIRE_SIZES.filter(s => s.toLowerCase().includes(searchSize.toLowerCase())).length > 0
+                  ? TIRE_SIZES.filter(s => s.toLowerCase().includes(searchSize.toLowerCase())).map((s, idx) => (
+                    <div key={idx} onClick={() => setSearchSize(s)} style={{ padding: "10px 12px", color: "#f1f5f9", fontSize: 13, cursor: "pointer", borderRadius: 6 }}
+                      onMouseEnter={e => e.currentTarget.style.background = "#2d2d38"}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}>{s}</div>
+                  ))
+                  : <div style={{ padding: "10px 12px", color: "#4b5563", fontSize: 12 }}>Nenhuma medida encontrada</div>}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* LISTAGEM */}
       <div style={{ display: "grid", gap: 12 }}>
-        {purchases.map(p => (
+        {filteredPurchases.map(p => (
           <div key={p.id} style={{ background: "#14151c", border: "1px solid #2d2d38", borderRadius: 12, padding: "18px 22px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
                   <span style={{ fontFamily: "Bebas Neue", fontSize: 18, color: O, letterSpacing: "0.06em" }}>#{p.orderNumber}</span>
-                  <span style={{ background: "#1e2a3a", color: "#60a5fa", fontSize: 11, padding: "2px 10px", borderRadius: 10, fontFamily: "Barlow,sans-serif" }}>{p.brand}</span>
+                  <span style={{ background: "#1e2a3a", color: "#60a5fa", fontSize: 11, padding: "2px 10px", borderRadius: 10 }}>{p.brand}</span>
                   <span style={{ color: "#4b5563", fontSize: 12, fontFamily: "IBM Plex Mono" }}>{fmtD(p.date)}</span>
                 </div>
-                <div style={{ color: "#64748b", fontSize: 13, fontFamily: "Barlow,sans-serif", display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+                <div style={{ color: "#64748b", fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
                   <Truck size={13} /> {p.supplier}
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {(p.items || []).map((it, i) => (
-                    <span key={i} style={{ background: "#0d0e12", color: "#94a3b8", fontSize: 12, padding: "4px 12px", borderRadius: 8, fontFamily: "IBM Plex Mono", border: "1px solid #2d2d38" }}>
-                      {it.qty}× {it.size}
+                    <span key={i} style={{ background: "#0d0e12", padding: "8px 12px", borderRadius: 8, border: "1px solid #2d2d38", display: "flex", flexDirection: "column" }}>
+                      <span style={{ color: "#f1f5f9", fontSize: 13, fontWeight: 600 }}>{it.qty}× {it.size}</span>
+                      <span style={{ color: "#64748b", fontSize: 11, marginTop: 2 }}>Valor: {fmt(it.price)}</span>
                     </span>
                   ))}
                 </div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ color: O, fontFamily: "IBM Plex Mono", fontSize: 22, fontWeight: 500 }}>{fmt(p.totalCost)}</div>
-                <div style={{ color: "#4b5563", fontSize: 12, fontFamily: "Barlow,sans-serif", marginTop: 4 }}>{p.totalQty} pneus no total</div>
-                <button
-                  onClick={() => deleteItem("purchases", p.id, `Pedido #${p.orderNumber}`)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "#374151",
-                    marginTop: 12,
-                    padding: "4px",
-                    transition: "color .2s"
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.color = "#ef4444"}
-                  onMouseLeave={e => e.currentTarget.style.color = "#374151"}
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", marginBottom: 2 }}>Total Pedido</div>
+                <div style={{ color: O, fontFamily: "IBM Plex Mono", fontSize: 22, fontWeight: 500 }}>{fmt(p.totalCost || 0)}</div>
+                <div style={{ color: "#4b5563", fontSize: 12, marginTop: 4 }}>{p.totalQty || 0} pneus no total</div>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+                  <button
+                    onClick={() => openEdit(p)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563" }}
+                    onMouseEnter={e => e.currentTarget.style.color = B}
+                    onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}
+                    title="Ajustar data"
+                  >
+                    <Pencil size={15} />
+                  </button>
+                  <button
+                    onClick={() => deleteItem("purchases", p.id, `Pedido #${p.orderNumber}`)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#374151" }}
+                    onMouseEnter={e => e.currentTarget.style.color = R}
+                    onMouseLeave={e => e.currentTarget.style.color = "#374151"}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         ))}
-        {purchases.length === 0 && <div style={{ background: "#14151c", border: "1px solid #2d2d38", borderRadius: 12, padding: 48, textAlign: "center", color: "#374151", fontFamily: "Barlow,sans-serif" }}>Nenhum pedido registrado ainda.</div>}
       </div>
-
-      <Modal open={modal} onClose={() => setModal(false)} title="Novo Pedido de Compra">
+      {/* MODAL */}
+      <Modal open={modal} onClose={() => { setModal(false); setErrors({}); }} title={editingId ? "Editar Pedido" : "Novo Pedido de Compra"}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-          <Field label="Nº do Pedido"><input style={inp} value={form.orderNumber} onChange={e => setForm(f => ({ ...f, orderNumber: e.target.value }))} placeholder="PED-005" /></Field>
-          <Field label="Marca"><select style={inp} value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}>{BRANDS.map(b => <option key={b}>{b}</option>)}</select></Field>
-          <Field label="Fornecedor"><select style={inp} value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))}>{SUPPLIERS.map(s => <option key={s}>{s}</option>)}</select></Field>
-          <Field label="Data do Pedido"><input style={inp} type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></Field>
-          <Field label="Valor Total (R$)" span><input style={inp} type="number" min="0" step="0.01" value={form.totalCost || ""} onChange={e => setForm(f => ({ ...f, totalCost: e.target.value }))} placeholder="0,00" /></Field>
+
+          <Field label="Nº do Pedido">
+            <input
+              style={{ ...inp, borderColor: errors.orderNumber ? "#ef4444" : "#2d2d38" }}
+              value={form.orderNumber}
+              onChange={e => { setForm(f => ({ ...f, orderNumber: e.target.value })); setErrors(er => ({ ...er, orderNumber: "" })); }}
+              placeholder="Ex: PED-100"
+            />
+            {errors.orderNumber && <div style={errStyle}>{errors.orderNumber}</div>}
+          </Field>
+
+          <Field label="Marca">
+            <div style={{ borderRadius: 8, border: errors.brand ? "1px solid #ef4444" : "none" }}>
+              <ComboInput
+                value={form.brand}
+                options={brandList}
+                placeholder="Escolha ou digite..."
+                onAddNew={addBrand}
+                onChange={v => { setForm(f => ({ ...f, brand: v })); setErrors(er => ({ ...er, brand: "" })); }}
+              />
+            </div>
+            {errors.brand && <div style={errStyle}>{errors.brand}</div>}
+          </Field>
+
+          <Field label="Fornecedor">
+            <div style={{ borderRadius: 8, border: errors.supplier ? "1px solid #ef4444" : "none" }}>
+              <ComboInput
+                value={form.supplier}
+                options={supplierList}
+                placeholder="Escolha ou digite..."
+                onAddNew={addSupplier}
+                onChange={v => { setForm(f => ({ ...f, supplier: v })); setErrors(er => ({ ...er, supplier: "" })); }}
+              />
+            </div>
+            {errors.supplier && <div style={errStyle}>{errors.supplier}</div>}
+          </Field>
+
+          <Field label="Data do Pedido">
+            <input
+              style={{ ...inp, borderColor: errors.date ? "#ef4444" : "#2d2d38" }}
+              type="date" value={form.date}
+              onChange={e => { setForm(f => ({ ...f, date: e.target.value })); setErrors(er => ({ ...er, date: "" })); }}
+            />
+            {errors.date && <div style={errStyle}>{errors.date}</div>}
+          </Field>
         </div>
+
         <div style={{ borderTop: "1px solid #2d2d38", paddingTop: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <Label>Pneus do Pedido</Label>
-            <button onClick={addItem} style={{ ...btnS("outline"), padding: "5px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><Plus size={12} /> Adicionar</button>
+            <button onClick={addItem} style={{ ...btnS("outline"), padding: "5px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+              <Plus size={12} /> Adicionar
+            </button>
           </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 70px 110px 30px", gap: 8, marginBottom: 4, padding: "0 4px" }}>
+            <span style={{ color: "#64748b", fontSize: 10, textTransform: "uppercase" }}>Medida</span>
+            <span style={{ color: "#64748b", fontSize: 10, textTransform: "uppercase", textAlign: "center" }}>Qtd</span>
+            <span style={{ color: "#64748b", fontSize: 10, textTransform: "uppercase" }}>Valor Unit. (R$)</span>
+          </div>
+
           {form.items.map((it, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 90px", gap: 8, marginBottom: 8 }}>
-              <select style={inp} value={it.size} onChange={e => updItem(i, "size", e.target.value)}>{TIRE_SIZES.map(s => <option key={s}>{s}</option>)}</select>
-              <input style={{ ...inp, textAlign: "center" }} type="number" min="1" value={it.qty} onChange={e => updItem(i, "qty", e.target.value)} placeholder="Qtd" />
+            <div key={i} style={{ marginBottom: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 70px 110px 30px", gap: 8 }}>
+                <div style={{ border: errors.items?.[i]?.size ? "1px solid #ef4444" : "none", borderRadius: 8 }}>
+                  <ComboInput
+                    value={it.size}
+                    options={TIRE_SIZES}
+                    placeholder="Ex: 295/80 R22.5"
+                    onChange={v => { updItem(i, "size", v); setErrors(er => { const it2 = [...(er.items || [])]; if (it2[i]) it2[i].size = ""; return { ...er, items: it2 }; }); }}
+                  />
+                </div>
+                <input style={{ ...inp, textAlign: "center" }} type="number" min="1" value={it.qty} onChange={e => updItem(i, "qty", e.target.value)} />
+                <div>
+                  <input
+                    style={{ ...inp, borderColor: errors.items?.[i]?.price ? "#ef4444" : "#2d2d38" }}
+                    type="number" step="0.01" value={it.price || ""}
+                    onChange={e => { updItem(i, "price", e.target.value); setErrors(er => { const it2 = [...(er.items || [])]; if (it2[i]) it2[i].price = ""; return { ...er, items: it2 }; }); }}
+                    placeholder="0,00"
+                  />
+                  {errors.items?.[i]?.price && <div style={errStyle}>{errors.items[i].price}</div>}
+                </div>
+                {form.items.length > 1 && (
+                  <button onClick={() => remItem(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", alignSelf: "center" }}>
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+              {errors.items?.[i]?.size && <div style={{ ...errStyle, marginTop: 2 }}>{errors.items[i].size}</div>}
             </div>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={() => setModal(false)} style={btnS("outline")}>Cancelar</button>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 24 }}>
+          <button onClick={() => { setModal(false); setErrors({}); }} style={btnS("outline")}>Cancelar</button>
           <button onClick={save} disabled={saving} style={{ ...btnS(), display: "flex", alignItems: "center", gap: 8, opacity: saving ? .7 : 1 }}>
-            {saving ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />Salvando...</> : "Salvar Pedido"}
+            {saving ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />Salvando...</> : editingId ? "Salvar Alterações" : "Salvar Pedido"}
           </button>
         </div>
       </Modal>
@@ -964,23 +1394,35 @@ function Financeiro({ sales, expenses, purchases }) {
 }
 
 /* ─────────────── Despesas ─────────────── */
-function Despesas({ expenses, addExpense, deleteItem }) {
+function Despesas({ expenses, addExpense, updateExpense, deleteItem }) {
   const emptyF = { category: EXP_CATS[0], tag: "empresa", description: "", value: "", payee: "", date: today(), time: nowT() };
   const [modal, setModal] = useState(false);
   const [filter, setFilter] = useState("todos");
   const [form, setForm] = useState(emptyF);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
-  const filtered = filter === "todos" ? expenses : expenses.filter(e => e.tag === filter);
-  const totalE = expenses.filter(e => e.tag === "empresa").reduce((a, e) => a + Number(e.value), 0);
-  const totalP = expenses.filter(e => e.tag === "pessoal").reduce((a, e) => a + Number(e.value), 0);
+  const openNew = () => { setEditingId(null); setForm(emptyF); setModal(true); };
+  const openEdit = (item) => {
+    setEditingId(item.id);
+    setForm({
+      category: item.category || EXP_CATS[0],
+      tag: item.tag || "empresa",
+      description: item.description || "",
+      value: item.value != null ? String(item.value) : "",  // ← converte number → string
+      payee: item.payee || "",
+      date: item.date || today(),
+      time: item.time || nowT(),
+    });
+    setModal(true);
+  };
 
   const save = async () => {
     if (!form.description || !form.value) return;
     setSaving(true);
-    const ok = await addExpense(form);
+    const ok = editingId ? await updateExpense(editingId, form) : await addExpense(form);
     setSaving(false);
-    if (ok) { setModal(false); setForm(emptyF); }
+    if (ok) { setModal(false); setForm(emptyF); setEditingId(null); }
   };
 
   return (
@@ -993,7 +1435,7 @@ function Despesas({ expenses, addExpense, deleteItem }) {
             &nbsp;·&nbsp; Pessoal: <span style={{ color: P, fontFamily: "IBM Plex Mono" }}>{fmt(totalP)}</span>
           </p>
         </div>
-        <button onClick={() => setModal(true)} style={{ ...btnS(), display: "flex", alignItems: "center", gap: 8 }}>
+        <button onClick={() => openNew} style={{ ...btnS(), display: "flex", alignItems: "center", gap: 8 }}>
           <Plus size={15} /> Nova Despesa
         </button>
       </div>
@@ -1027,12 +1469,25 @@ function Despesas({ expenses, addExpense, deleteItem }) {
                 </td>
                 <td style={{ padding: "13px 16px", color: R, fontFamily: "IBM Plex Mono", fontSize: 14, fontWeight: 500 }}>-{fmt(item.value)}</td>
                 <td style={{ padding: "13px 16px", textAlign: "right" }}>
-                  <button
-                    onClick={() => deleteItem("expenses", item.id, item.description)}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563" }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <button
+                      onClick={() => openEdit(P)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563" }}
+                      onMouseEnter={e => e.currentTarget.style.color = B}
+                      onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}
+                      title="Ajustar data/hora"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={() => deleteItem("expenses", item.id, item.description)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563" }}
+                      onMouseEnter={e => e.currentTarget.style.color = R}
+                      onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -1041,7 +1496,7 @@ function Despesas({ expenses, addExpense, deleteItem }) {
         {filtered.length === 0 && <div style={{ padding: 48, textAlign: "center", color: "#374151", fontFamily: "Barlow,sans-serif" }}>Nenhuma despesa registrada ainda.</div>}
       </div>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="Nova Despesa">
+      <Modal open={modal} onClick={() => { openNew }} onClose={() => setModal(false)} title="Nova Despesa">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <Field label="Categoria"><select style={inp} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>{EXP_CATS.map(c => <option key={c}>{c}</option>)}</select></Field>
           <Field label="Tag">
@@ -1059,7 +1514,7 @@ function Despesas({ expenses, addExpense, deleteItem }) {
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
           <button onClick={() => setModal(false)} style={btnS("outline")}>Cancelar</button>
           <button onClick={save} disabled={saving} style={{ ...btnS(), display: "flex", alignItems: "center", gap: 8, opacity: saving ? .7 : 1 }}>
-            {saving ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />Salvando...</> : "Salvar Despesa"}
+            {saving ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />Salvando...</> : editingId ? "Salvar Alterações" : "Salvar Despesa"}
           </button>
         </div>
       </Modal>
@@ -1095,7 +1550,8 @@ export default function App() {
   const {
     sales, purchases, expenses,
     loading, error, toast,
-    fetchAll, addSale, markSalePaid, addPurchase, addExpense, deleteItem, markSaleAsPaid
+    fetchAll, addSale, markSalePaid, addPurchase, addExpense, deleteItem,
+    updateSale, updatePurchase, updateExpense
   } = useSupabase();
 
   const fiadoN = sales.filter(s => !s.paid).length;
@@ -1156,11 +1612,20 @@ export default function App() {
           ? <Spinner msg="Carregando dados do servidor..." />
           : <ErrorBoundary>
             {page === "dashboard" && <Dashboard sales={sales} expenses={expenses} purchases={purchases} />}
-            {page === "vendas" && <Vendas sales={sales} addSale={addSale} deleteItem={requestDelete} />}
+            {page === "vendas" && <Vendas sales={sales} addSale={addSale} updateSale={updateSale} deleteItem={requestDelete} />}
             {page === "receber" && <AReceber sales={sales} markSalePaid={markSalePaid} />}
-            {page === "estoque" && <Estoque purchases={purchases} addPurchase={addPurchase} deleteItem={requestDelete} />}
+            {page === "estoque" && <Estoque
+              purchases={purchases}
+              addPurchase={addPurchase}
+              deleteItem={deleteItem}
+              updatePurchase={updatePurchase}
+              BRANDS={BRANDS} SUPPLIERS={SUPPLIERS} TIRE_SIZES={TIRE_SIZES}
+              fmt={fmt} fmtD={fmtD} today={today} btnS={btnS} inp={inp}
+              Field={Field} Label={Label} Modal={Modal}
+              O={O} Loader2={Loader2} Plus={Plus} Truck={Truck} Trash2={Trash2}
+            />}
             {page === "financeiro" && <Financeiro sales={sales} expenses={expenses} purchases={purchases} />}
-            {page === "despesas" && <Despesas expenses={expenses} addExpense={addExpense} deleteItem={requestDelete} />}
+            {page === "despesas" && <Despesas expenses={expenses} addExpense={addExpense} updateExpense={updateExpense} deleteItem={requestDelete} />}
           </ErrorBoundary>
         }
       </main>
@@ -1205,6 +1670,36 @@ function ConfirmModal({ open, onClose, onConfirm, title }) {
             Sim, Excluir
           </button>
         </div>
+      </div>
+    </Modal>
+  );
+}
+
+function EditDateModal({ open, onClose, onSave, item, showTime = true }) {
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+
+  useEffect(() => {
+    if (item) { setDate(item.date || ""); setTime(item.time || ""); }
+  }, [item]);
+
+  if (!open) return null;
+
+  return (
+    <Modal open={open} onClose={onClose} title="Ajustar Data e Hora">
+      <div style={{ display: "grid", gridTemplateColumns: showTime ? "1fr 1fr" : "1fr", gap: 14 }}>
+        <Field label="Data">
+          <input style={inp} type="date" value={date} onChange={e => setDate(e.target.value)} />
+        </Field>
+        {showTime && (
+          <Field label="Hora">
+            <input style={inp} type="time" value={time} onChange={e => setTime(e.target.value)} />
+          </Field>
+        )}
+      </div>
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+        <button onClick={onClose} style={btnS("outline")}>Cancelar</button>
+        <button onClick={() => onSave(date, time)} style={btnS()}>Salvar</button>
       </div>
     </Modal>
   );
