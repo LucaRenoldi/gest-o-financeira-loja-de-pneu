@@ -204,11 +204,21 @@ function Toast({ msg, type }) {
 }
 
 function Modal({ open, onClose, title, children }) {
+  const isMobile = useIsMobile();
   if (!open) return null;
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center" }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(3px)" }} onClick={onClose} />
-      <div style={{ position: "relative", background: "#16171e", border: "1px solid #2d2d38", borderRadius: 16, padding: 32, width: "92%", maxWidth: 620, maxHeight: "88vh", overflowY: "auto", zIndex: 1 }}>
+      <div style={{
+        position: "relative", background: "#16171e", border: "1px solid #2d2d38",
+        borderRadius: isMobile ? "20px 20px 0 0" : 16,
+        padding: isMobile ? "24px 20px 32px" : 32,
+        width: isMobile ? "100%" : "92%",
+        maxWidth: isMobile ? "100%" : 620,
+        maxHeight: isMobile ? "92vh" : "88vh",
+        overflowY: "auto", zIndex: 1
+      }}>
+        {isMobile && <div style={{ width: 40, height: 4, background: "#2d2d38", borderRadius: 2, margin: "0 auto 20px" }} />}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <h2 style={{ fontFamily: "Bebas Neue", fontSize: 26, color: O, letterSpacing: "0.06em" }}>{title}</h2>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}><X size={20} /></button>
@@ -438,6 +448,17 @@ function useSupabase() {
   };
 }
 
+/* ─────────────── Hook responsivo ─────────────── */
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < breakpoint : false);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 /* ─────────────── Dashboard ─────────────── */
 function buildDailyChart(sales, expenses) {
   const days = Array.from({ length: new Date().getDate() }, (_, i) => {
@@ -452,6 +473,7 @@ function buildDailyChart(sales, expenses) {
 }
 
 function Dashboard({ sales, expenses, purchases }) {
+  const isMobile = useIsMobile();
   const [period, setPeriod] = useState("mensal");
 
   const COLORS = ['#3b82f6', '#22c55e', '#eab308', '#a855f7', '#f97316', '#ef4444', '#06b6d4'];
@@ -596,7 +618,7 @@ function Dashboard({ sales, expenses, purchases }) {
 
   return (
     <div style={{ animation: "fadeIn .3s ease" }}>
-      <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 28, flexWrap: "wrap" }}>
         {["Diário", "Semanal", "Mensal", "Anual"].map(p => (
           <button key={p} onClick={() => setPeriod(p.toLowerCase())} style={{
             padding: "7px 20px", borderRadius: 20, border: "none", cursor: "pointer",
@@ -607,14 +629,14 @@ function Dashboard({ sales, expenses, purchases }) {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 14, marginBottom: 24 }}>
         <KPI title="Faturamento" value={fmt(totalFat)} sub={fatPct.label} up={fatPct.up} icon={TrendingUp} color={G} />
         <KPI title="Despesas" value={fmt(totalDesp)} sub={despPct.label} up={!despPct.up} icon={DollarSign} color={R} />
         <KPI title="Lucro Líquido" value={fmt(totalFat - totalDesp)} sub={lucroPct.label} up={lucroPct.up} icon={TrendingUp} color={O} />
         <KPI title="A Receber" value={fmt(totalRec)} sub={`${sales.filter(s => !s.paid).length} em aberto`} icon={CreditCard} color={Y} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14, marginBottom: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: 14, marginBottom: 14 }}>
         <div style={{ background: "#14151c", border: "1px solid #2d2d38", borderRadius: 12, padding: 24 }}>
           <h3 style={{ fontFamily: "Bebas Neue", fontSize: 18, color: "#f1f5f9", letterSpacing: "0.06em", marginBottom: 20 }}>Faturamento · Despesas · Lucro</h3>
           <ResponsiveContainer width="100%" height={210}>
@@ -656,7 +678,7 @@ function Dashboard({ sales, expenses, purchases }) {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
         <div style={{ background: "#14151c", border: "1px solid #2d2d38", borderRadius: 12, padding: 24 }}>
           <h3 style={{ fontFamily: "Bebas Neue", fontSize: 18, color: "#f1f5f9", letterSpacing: "0.06em", marginBottom: 16 }}>Faturamento por Região</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -760,6 +782,7 @@ function Dashboard({ sales, expenses, purchases }) {
 
 /* ─────────────── Vendas ─────────────── */
 function Vendas({ sales, addSale, updateSale, deleteItem, addToList, lists, TIRE_SIZES }) {
+  const isMobile = useIsMobile();
   const empty = { clientName: "", clientPhone: "", region: REGIONS[0], items: [{ size: TIRE_SIZES[7], qty: 1, unitPrice: "" }], paid: true, date: today(), time: nowT() };
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(empty);
@@ -896,7 +919,7 @@ function Vendas({ sales, addSale, updateSale, deleteItem, addToList, lists, TIRE
       </div>
 
       <Modal open={modal} onClose={() => { setModal(false); setEditingId(null); }} title={editingId ? "Editar Venda" : "Nova Venda"}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14, marginBottom: 16 }}>
           {!editingId && (
             <div onClick={handleQuickSaleToggle} style={{
               gridColumn: "1 / -1", display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -959,7 +982,7 @@ function Vendas({ sales, addSale, updateSale, deleteItem, addToList, lists, TIRE
             <button onClick={addItem} style={{ ...btnS("outline"), padding: "5px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><Plus size={12} /> Adicionar</button>
           </div>
           {form.items.map((it, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "1.8fr 70px 110px 30px", gap: 8, marginBottom: 8, alignItems: "center" }}>
+            <div key={i} style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 60px 90px 24px" : "1.8fr 70px 110px 30px", gap: 8, marginBottom: 8, alignItems: "center" }}>
               <ComboInput
                 value={it.size}
                 options={TIRE_SIZES} // Agora vem do banco!
@@ -1391,6 +1414,7 @@ function Estoque({ purchases, addPurchase, deleteItem, BRANDS, SUPPLIERS, TIRE_S
 
 /* ─────────────── Financeiro ─────────────── */
 function Financeiro({ sales, expenses, purchases }) {
+  const isMobile = useIsMobile();
   const [detail, setDetail] = useState(null);
   const totalFat = sales.filter(s => s.paid).reduce((a, s) => a + Number(s.total), 0);
   const totalDesp = expenses.reduce((a, e) => a + Number(e.value), 0);
@@ -1409,7 +1433,7 @@ function Financeiro({ sales, expenses, purchases }) {
   return (
     <div style={{ animation: "fadeIn .3s ease" }}>
       <h2 style={{ fontFamily: "Bebas Neue", fontSize: 30, color: "#f1f5f9", letterSpacing: "0.05em", marginBottom: 24 }}>Financeiro</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 28 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)", gap: 14, marginBottom: 28 }}>
         {cards.map(c => (
           <div key={c.label} onClick={() => c.items.length > 0 && setDetail(c)}
             style={{ background: "#14151c", border: `1px solid ${c.color}28`, borderRadius: 12, padding: "22px 24px", cursor: c.items.length > 0 ? "pointer" : "default", transition: "border-color .15s", position: "relative", overflow: "hidden" }}
@@ -1453,12 +1477,17 @@ function Financeiro({ sales, expenses, purchases }) {
 
 /* ─────────────── Despesas ─────────────── */
 function Despesas({ expenses, addExpense, updateExpense, deleteItem }) {
+  const isMobile = useIsMobile();
   const emptyF = { category: EXP_CATS[0], tag: "empresa", description: "", value: "", payee: "", date: today(), time: nowT() };
   const [modal, setModal] = useState(false);
   const [filter, setFilter] = useState("todos");
   const [form, setForm] = useState(emptyF);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
+  const filtered = expenses.filter(e => filter === "todos" || e.tag === filter);
+  const totalE = expenses.filter(e => e.tag === "empresa").reduce((a, e) => a + Number(e.value), 0);
+  const totalP = expenses.filter(e => e.tag === "pessoal").reduce((a, e) => a + Number(e.value), 0);
 
   const openNew = () => { setEditingId(null); setForm(emptyF); setModal(true); };
   const openEdit = (item) => {
@@ -1493,7 +1522,7 @@ function Despesas({ expenses, addExpense, updateExpense, deleteItem }) {
             &nbsp;·&nbsp; Pessoal: <span style={{ color: P, fontFamily: "IBM Plex Mono" }}>{fmt(totalP)}</span>
           </p>
         </div>
-        <button onClick={() => openNew} style={{ ...btnS(), display: "flex", alignItems: "center", gap: 8 }}>
+        <button onClick={openNew} style={{ ...btnS(), display: "flex", alignItems: "center", gap: 8 }}>
           <Plus size={15} /> Nova Despesa
         </button>
       </div>
@@ -1529,11 +1558,11 @@ function Despesas({ expenses, addExpense, updateExpense, deleteItem }) {
                 <td style={{ padding: "13px 16px", textAlign: "right" }}>
                   <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                     <button
-                      onClick={() => openEdit(P)}
+                      onClick={() => openEdit(item)}
                       style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563" }}
                       onMouseEnter={e => e.currentTarget.style.color = B}
                       onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}
-                      title="Ajustar data/hora"
+                      title="Editar despesa"
                     >
                       <Pencil size={15} />
                     </button>
@@ -1554,8 +1583,8 @@ function Despesas({ expenses, addExpense, updateExpense, deleteItem }) {
         {filtered.length === 0 && <div style={{ padding: 48, textAlign: "center", color: "#374151", fontFamily: "Barlow,sans-serif" }}>Nenhuma despesa registrada ainda.</div>}
       </div>
 
-      <Modal open={modal} onClick={() => { openNew }} onClose={() => setModal(false)} title="Nova Despesa">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <Modal open={modal} onClose={() => { setModal(false); setEditingId(null); }} title={editingId ? "Editar Despesa" : "Nova Despesa"}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
           <Field label="Categoria"><select style={inp} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>{EXP_CATS.map(c => <option key={c}>{c}</option>)}</select></Field>
           <Field label="Tag">
             <select style={inp} value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))}>
@@ -1592,6 +1621,7 @@ const NAV = [
 
 /* ─────────────── App Principal ─────────────── */
 export default function App() {
+  const isMobile = useIsMobile();
   const [page, setPage] = useState("dashboard");
   const [confirm, setConfirm] = useState({ open: false, table: "", id: "", title: "" });
 
@@ -1615,52 +1645,64 @@ export default function App() {
   const fiadoN = sales.filter(s => !s.paid).length;
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#0d0e12", fontFamily: "Barlow,sans-serif", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "row", height: "100vh", background: "#0d0e12", fontFamily: "Barlow,sans-serif", overflow: "hidden" }}>
       <style>{FONTS}</style>
 
-      {/* Sidebar */}
-      <aside style={{ width: 215, background: "#0f1015", borderRight: "1px solid #1c1c26", display: "flex", flexDirection: "column", padding: "24px 14px", flexShrink: 0 }}>
-        <div style={{ paddingLeft: 8, marginBottom: 36 }}>
-          <div style={{ fontFamily: "Bebas Neue", fontSize: 28, color: O, letterSpacing: "0.1em", lineHeight: 1 }}>PNEU</div>
-          <div style={{ fontFamily: "Bebas Neue", fontSize: 28, color: "#f1f5f9", letterSpacing: "0.1em", lineHeight: 1 }}>CONTROL</div>
-          <div style={{ width: 28, height: 2, background: O, marginTop: 6 }} />
-        </div>
-        <nav style={{ flex: 1 }}>
-          {NAV.map(({ id, label, icon: Icon }) => {
-            const active = page === id;
-            const badge = id === "receber" && fiadoN > 0 ? fiadoN : null;
-            return (
-              <button key={id} onClick={() => setPage(id)} style={{
-                display: "flex", alignItems: "center", gap: 10, width: "100%",
-                padding: "10px 12px", borderRadius: 10, border: "none", cursor: "pointer",
-                background: active ? `${O}18` : "transparent",
-                color: active ? O : "#4b5563",
-                fontFamily: "Barlow,sans-serif", fontWeight: active ? 600 : 400, fontSize: 14,
-                marginBottom: 3, transition: "all .12s", position: "relative",
-              }}>
-                {active && <div style={{ position: "absolute", left: 0, top: "22%", bottom: "22%", width: 3, borderRadius: 2, background: O }} />}
-                <Icon size={15} />{label}
-                {badge && <span style={{ marginLeft: "auto", background: O, color: "#000", borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>{badge}</span>}
-              </button>
-            );
-          })}
-        </nav>
-        <div style={{ borderTop: "1px solid #1c1c26", paddingTop: 14, color: "#374151", fontSize: 11, fontFamily: "Barlow,sans-serif" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: error ? "#ef4444" : "#22c55e" }} />
-            {error ? "Sem conexão" : "Conectado"}
+      {/* Sidebar — visível apenas no desktop */}
+      {!isMobile && (
+        <aside style={{ width: 215, background: "#0f1015", borderRight: "1px solid #1c1c26", display: "flex", flexDirection: "column", padding: "24px 14px", flexShrink: 0 }}>
+          <div style={{ paddingLeft: 8, marginBottom: 36 }}>
+            <div style={{ fontFamily: "Bebas Neue", fontSize: 28, color: O, letterSpacing: "0.1em", lineHeight: 1 }}>PNEU</div>
+            <div style={{ fontFamily: "Bebas Neue", fontSize: 28, color: "#f1f5f9", letterSpacing: "0.1em", lineHeight: 1 }}>CONTROL</div>
+            <div style={{ width: 28, height: 2, background: O, marginTop: 6 }} />
           </div>
-        </div>
-      </aside>
+          <nav style={{ flex: 1 }}>
+            {NAV.map(({ id, label, icon: Icon }) => {
+              const active = page === id;
+              const badge = id === "receber" && fiadoN > 0 ? fiadoN : null;
+              return (
+                <button key={id} onClick={() => setPage(id)} style={{
+                  display: "flex", alignItems: "center", gap: 10, width: "100%",
+                  padding: "10px 12px", borderRadius: 10, border: "none", cursor: "pointer",
+                  background: active ? `${O}18` : "transparent",
+                  color: active ? O : "#4b5563",
+                  fontFamily: "Barlow,sans-serif", fontWeight: active ? 600 : 400, fontSize: 14,
+                  marginBottom: 3, transition: "all .12s", position: "relative",
+                }}>
+                  {active && <div style={{ position: "absolute", left: 0, top: "22%", bottom: "22%", width: 3, borderRadius: 2, background: O }} />}
+                  <Icon size={15} />{label}
+                  {badge && <span style={{ marginLeft: "auto", background: O, color: "#000", borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>{badge}</span>}
+                </button>
+              );
+            })}
+          </nav>
+          <div style={{ borderTop: "1px solid #1c1c26", paddingTop: 14, color: "#374151", fontSize: 11, fontFamily: "Barlow,sans-serif" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: error ? "#ef4444" : "#22c55e" }} />
+              {error ? "Sem conexão" : "Conectado"}
+            </div>
+          </div>
+        </aside>
+      )}
 
       {/* Main */}
-      <main style={{ flex: 1, overflowY: "auto", padding: "28px 32px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+      <main style={{ flex: 1, overflowY: "auto", padding: isMobile ? "20px 16px 90px" : "28px 32px" }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontFamily: "Bebas Neue", fontSize: 34, color: "#f1f5f9", letterSpacing: "0.05em" }}>{NAV.find(n => n.id === page)?.label}</h1>
-            <p style={{ color: "#374151", fontSize: 12, fontFamily: "Barlow,sans-serif", marginTop: 3 }}>
-              {new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-            </p>
+            {isMobile && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                <div style={{ fontFamily: "Bebas Neue", fontSize: 22, color: O, letterSpacing: "0.1em", lineHeight: 1 }}>PNEU</div>
+                <div style={{ fontFamily: "Bebas Neue", fontSize: 22, color: "#f1f5f9", letterSpacing: "0.1em", lineHeight: 1 }}>CONTROL</div>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: error ? "#ef4444" : "#22c55e", marginLeft: 6 }} />
+              </div>
+            )}
+            <h1 style={{ fontFamily: "Bebas Neue", fontSize: isMobile ? 26 : 34, color: "#f1f5f9", letterSpacing: "0.05em" }}>{NAV.find(n => n.id === page)?.label}</h1>
+            {!isMobile && (
+              <p style={{ color: "#374151", fontSize: 12, fontFamily: "Barlow,sans-serif", marginTop: 3 }}>
+                {new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+              </p>
+            )}
           </div>
         </div>
 
@@ -1687,6 +1729,39 @@ export default function App() {
           </ErrorBoundary>
         }
       </main>
+
+      {/* Bottom Nav — visível apenas no mobile */}
+      {isMobile && (
+        <nav style={{
+          position: "fixed", bottom: 0, left: 0, right: 0,
+          background: "#0f1015", borderTop: "1px solid #1c1c26",
+          display: "flex", justifyContent: "space-around", alignItems: "center",
+          padding: "6px 0 10px", zIndex: 500,
+          boxShadow: "0 -4px 20px rgba(0,0,0,0.4)"
+        }}>
+          {NAV.map(({ id, label, icon: Icon }) => {
+            const active = page === id;
+            const badge = id === "receber" && fiadoN > 0 ? fiadoN : null;
+            return (
+              <button key={id} onClick={() => setPage(id)} style={{
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                background: "none", border: "none", cursor: "pointer",
+                color: active ? O : "#4b5563",
+                fontFamily: "Barlow,sans-serif", fontSize: 9, fontWeight: active ? 700 : 400,
+                padding: "4px 6px", position: "relative", minWidth: 44, transition: "color .12s"
+              }}>
+                <div style={{ background: active ? `${O}18` : "transparent", borderRadius: 8, padding: "4px 8px", transition: "background .12s" }}>
+                  <Icon size={19} />
+                </div>
+                <span style={{ textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</span>
+                {badge && (
+                  <span style={{ position: "absolute", top: 2, right: 4, background: O, color: "#000", borderRadius: 10, padding: "0 5px", fontSize: 9, fontWeight: 700, lineHeight: "16px" }}>{badge}</span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      )}
 
       <Toast msg={toast.msg} type={toast.type} />
 
